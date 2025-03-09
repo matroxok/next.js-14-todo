@@ -3,13 +3,12 @@ import Credentials from 'next-auth/providers/credentials';
 import * as bcrypt from 'bcrypt';
 
 import { db } from '~/lib/db';
-
 import { PAGES } from '~/lib/constants';
 
-export const authOptions = {
+export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
-    maxAge: +process.env.NEXTAUTH_SECRET_EXPIRES_IN!
+    maxAge: Number(process.env.NEXTAUTH_SECRET_EXPIRES_IN) || 86400 // Domyślnie 1 dzień
   },
   pages: {
     signIn: PAGES.SIGN_IN
@@ -19,10 +18,10 @@ export const authOptions = {
     Credentials({
       name: 'Credentials provider',
       credentials: {
-        username: { label: 'username', type: 'text', required: true },
-        password: { label: 'password', type: 'password', required: true }
+        username: { label: 'Username', type: 'text', required: true },
+        password: { label: 'Password', type: 'password', required: true }
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         if (!credentials) return null;
 
         const user = await db.user.findUnique({
@@ -31,40 +30,39 @@ export const authOptions = {
           }
         });
 
-        if (user) {
-          const isPasswordValid = await bcrypt.compare(
-            credentials.password,
-            user.password
-          );
+        if (!user) return null;
 
-          if (isPasswordValid) {
-            return {
-              id: user.id,
-              username: user.username
-            };
-          }
-        }
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
 
-        throw new Error('Wrong username or password');
+        if (!isPasswordValid) return null;
+
+        return {
+          id: user.id,
+          username: user.username
+        };
       }
     })
   ],
   callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id as string;
-        session.user.username = token.username as string;
-      }
-
-      return session; // so user will be able to retrieve id and username from session
-    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.username = user.username;
       }
-
-      return token; // this will be passed to the session callback
+      return token;
+    },
+    async session({ token, session }) {
+      return {
+        ...session,
+        user: {
+          ...(session.user || {}), // Zapewnia, że `user` istnieje
+          id: token.id ?? '',
+          username: token.username ?? ''
+        }
+      };
     }
   }
-} satisfies NextAuthOptions;
+};

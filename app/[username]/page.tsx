@@ -33,31 +33,31 @@ async function getMyTasks(searchValue: string = '') {
       OR: [
         {
           title: {
-            contains: searchValue
-          }
+            contains: searchValue,
+          },
         },
         {
           description: {
-            contains: searchValue
-          }
-        }
-      ]
+            contains: searchValue,
+          },
+        },
+      ],
     },
     orderBy: {
-      createdAt: 'desc'
+      createdAt: 'desc',
     },
     include: {
       gh: {
         select: {
-          fullName: true
-        }
+          fullName: true,
+        },
       },
       _count: {
         select: {
-          comments: true
-        }
-      }
-    }
+          comments: true,
+        },
+      },
+    },
   });
 
   return tasks;
@@ -65,16 +65,19 @@ async function getMyTasks(searchValue: string = '') {
 
 export default async function HomePage({
   params,
-  searchParams
+  searchParams,
 }: {
   params: {
     username: string;
   };
-  searchParams: {
-    q: string;
-  };
+  // Zgodnie z dokumentacją, searchParams jest asynchronicznym obiektem
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const tasks = await getMyTasks(searchParams.q);
+  // Najpierw czekamy aż searchParams zostanie rozwiązane
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams.q ?? '';
+
+  const tasks = await getMyTasks(query);
 
   return (
     <div className='flex w-full max-w-[650px] flex-col gap-6'>
@@ -88,10 +91,7 @@ export default async function HomePage({
       ) : (
         <ul className='flex flex-col gap-3 text-sm'>
           {tasks.map((task) => (
-            <li
-              key={task.id}
-              className='flex items-center gap-2 rounded-md border p-3'
-            >
+            <li key={task.id} className='flex items-center gap-2 rounded-md border p-3'>
               <DoneCheckbox id={task.id} done={task.done} />
               <Link
                 className='flex-1 overflow-hidden rounded-md p-2 hover:bg-accent'

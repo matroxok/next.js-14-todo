@@ -15,6 +15,7 @@ const getRepoMetadata = async (taskId: string) => {
 export default async function RepoMetaPage({
   params,
 }: {
+  // @ts-ignore
   params: { username: string; taskId: string } | Promise<{ username: string; taskId: string }>;
 }) {
   // "Awaitujemy" params, aby dostać zwykły obiekt
